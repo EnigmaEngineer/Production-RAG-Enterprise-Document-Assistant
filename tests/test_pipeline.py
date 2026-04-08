@@ -16,13 +16,12 @@ from src.chunking.engine import (
     RecursiveChunker,
     FixedOverlapChunker,
     get_chunker,
-    _count_tokens,
 )
 from src.retrieval.engine import FAISSStore, BM25Index, HybridRetriever
 from src.reranker.engine import DummyReranker
 from src.citation.formatter import CitationFormatter
 from src.llm.client import DummyLLMClient
-from src.models.schemas import Chunk, DocumentMetadata, IngestRequest
+from src.models.schemas import Chunk, DocumentMetadata
 
 
 # ---------------------------------------------------------------------------

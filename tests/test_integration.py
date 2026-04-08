@@ -15,7 +15,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -88,7 +87,6 @@ class TestIngestAndQuery:
             chunk_overlap=64,
         ))
         assert r2.num_chunks >= 1
-        python_doc_id = r2.doc_id
 
         # Query about Kubernetes
         response = pipeline.query(QueryRequest(
