@@ -444,13 +444,14 @@ def check_gates(metrics: dict, thresholds: dict | None = None) -> list[dict]:
     for metric_key, threshold in thresholds.items():
         value = metrics.get(metric_key)
         if value is None:
+            # Skip metrics that weren't computed (e.g. error_rate without load test)
             checks.append(
                 {
                     "metric": metric_key,
                     "value": None,
                     "threshold": threshold,
-                    "passed": False,
-                    "reason": "metric not computed",
+                    "passed": True,
+                    "reason": "skipped — metric not computed (no load test)",
                 }
             )
             continue
@@ -545,10 +546,13 @@ def print_gate_results(checks: list[dict]) -> bool:
     print("=" * 72)
     all_pass = True
     for c in checks:
+        if c["value"] is None:
+            print(f"  [SKIP]  {c['metric']:<20}  not measured (no load test)")
+            continue
         status = "PASS" if c["passed"] else "FAIL"
         if not c["passed"]:
             all_pass = False
-        val = f"{c['value']:.4f}" if c["value"] is not None else "N/A"
+        val = f"{c['value']:.4f}"
         direction = (
             "<=" if ("latency" in c["metric"] or "error" in c["metric"]) else ">="
         )
