@@ -147,7 +147,9 @@ class TestHybridRetriever:
     def test_search_returns_fused_results(self):
         store = FAISSStore(dim=4)
         bm25 = BM25Index()
-        embed_fn = lambda text: np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+
+        def embed_fn(text: str) -> np.ndarray:
+            return np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
         retriever = HybridRetriever(store, bm25, embed_fn)
 

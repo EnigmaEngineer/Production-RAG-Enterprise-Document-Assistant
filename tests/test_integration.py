@@ -221,7 +221,7 @@ class TestBacktestScript:
         )
         output_file = tmp_path / "results.json"
 
-        result = subprocess.run(
+        subprocess.run(
             [
                 sys.executable, "evaluation/backtest.py",
                 "--config", str(config_file),
