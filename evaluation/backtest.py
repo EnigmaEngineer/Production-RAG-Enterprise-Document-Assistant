@@ -91,9 +91,11 @@ GATE_THRESHOLDS = {
 #  Per-query result container
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class QueryResult:
     """Full evaluation result for a single query."""
+
     query: str
     difficulty: str
     expected_doc_ids: list[str]
@@ -154,6 +156,7 @@ class QueryResult:
 # ═══════════════════════════════════════════════════════════════════════════
 #  Pipeline builder (constructs a fresh pipeline for each config)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class EvalPipeline:
     """
@@ -241,6 +244,7 @@ class EvalPipeline:
 #  Core evaluation runner
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def evaluate_config(
     test_samples: list[dict],
     documents: list[dict],
@@ -254,13 +258,15 @@ def evaluate_config(
     use_llm_judge: bool = False,
 ) -> list[QueryResult]:
     """Run full evaluation for one configuration."""
-    cfg_label = label or f"{chunk_strategy}_{chunk_size}_{'rr' if use_reranker else 'norr'}"
+    cfg_label = (
+        label or f"{chunk_strategy}_{chunk_size}_{'rr' if use_reranker else 'norr'}"
+    )
 
-    print(f"\n{'─'*72}")
+    print(f"\n{'─' * 72}")
     print(f"  Config: {cfg_label}")
     print(f"  Chunk:  {chunk_strategy}  size={chunk_size}  overlap={chunk_overlap}")
     print(f"  Reranker: {'ON' if use_reranker else 'OFF'}")
-    print(f"{'─'*72}")
+    print(f"{'─' * 72}")
 
     pipeline = EvalPipeline(embed_svc, use_reranker=use_reranker)
     total_chunks = pipeline.ingest_corpus(
@@ -328,6 +334,7 @@ def evaluate_config(
 #  Aggregation
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def aggregate(results: list[QueryResult]) -> dict[str, Any]:
     """Aggregate per-query results into config-level metrics."""
     if not results:
@@ -349,37 +356,57 @@ def aggregate(results: list[QueryResult]) -> dict[str, Any]:
     }
 
     if answerable:
-        m.update({
-            "hit_rate_at_3": float(np.mean([r.hit_at_3 for r in answerable])),
-            "hit_rate_at_5": float(np.mean([r.hit_at_5 for r in answerable])),
-            "mrr": float(np.mean([r.rr for r in answerable])),
-            "ndcg_at_3": float(np.mean([r.ndcg_3 for r in answerable])),
-            "ndcg_at_5": float(np.mean([r.ndcg_5 for r in answerable])),
-            "precision_at_5": float(np.mean([r.precision_5 for r in answerable])),
-            "recall_at_5": float(np.mean([r.recall_5 for r in answerable])),
-            "token_f1": float(np.mean([r.token_f1_score for r in answerable
-                                       if r.token_f1_score > 0] or [0.0])),
-            "rouge_l_f1": float(np.mean([r.rouge_l_f1 for r in answerable
-                                         if r.rouge_l_f1 > 0] or [0.0])),
-        })
+        m.update(
+            {
+                "hit_rate_at_3": float(np.mean([r.hit_at_3 for r in answerable])),
+                "hit_rate_at_5": float(np.mean([r.hit_at_5 for r in answerable])),
+                "mrr": float(np.mean([r.rr for r in answerable])),
+                "ndcg_at_3": float(np.mean([r.ndcg_3 for r in answerable])),
+                "ndcg_at_5": float(np.mean([r.ndcg_5 for r in answerable])),
+                "precision_at_5": float(np.mean([r.precision_5 for r in answerable])),
+                "recall_at_5": float(np.mean([r.recall_5 for r in answerable])),
+                "token_f1": float(
+                    np.mean(
+                        [r.token_f1_score for r in answerable if r.token_f1_score > 0]
+                        or [0.0]
+                    )
+                ),
+                "rouge_l_f1": float(
+                    np.mean(
+                        [r.rouge_l_f1 for r in answerable if r.rouge_l_f1 > 0] or [0.0]
+                    )
+                ),
+            }
+        )
         judges = [r.llm_judge for r in answerable if r.llm_judge > 0]
         m["llm_judge_avg"] = float(np.mean(judges)) if judges else None
     else:
-        for k in ["hit_rate_at_3", "hit_rate_at_5", "mrr", "ndcg_at_3",
-                   "ndcg_at_5", "precision_at_5", "recall_at_5",
-                   "token_f1", "rouge_l_f1", "llm_judge_avg"]:
+        for k in [
+            "hit_rate_at_3",
+            "hit_rate_at_5",
+            "mrr",
+            "ndcg_at_3",
+            "ndcg_at_5",
+            "precision_at_5",
+            "recall_at_5",
+            "token_f1",
+            "rouge_l_f1",
+            "llm_judge_avg",
+        ]:
             m[k] = 0.0
 
-    m.update({
-        "latency_p50_ms": lat["p50"],
-        "latency_p95_ms": lat["p95"],
-        "latency_p99_ms": lat["p99"],
-        "latency_mean_ms": lat["mean"],
-        "retrieval_p50_ms": ret_lat["p50"],
-        "rerank_p50_ms": rr_lat["p50"],
-        "generation_p50_ms": gen_lat["p50"],
-        "throughput_qps": 1000.0 / lat["mean"] if lat["mean"] > 0 else 0,
-    })
+    m.update(
+        {
+            "latency_p50_ms": lat["p50"],
+            "latency_p95_ms": lat["p95"],
+            "latency_p99_ms": lat["p99"],
+            "latency_mean_ms": lat["mean"],
+            "retrieval_p50_ms": ret_lat["p50"],
+            "rerank_p50_ms": rr_lat["p50"],
+            "generation_p50_ms": gen_lat["p50"],
+            "throughput_qps": 1000.0 / lat["mean"] if lat["mean"] > 0 else 0,
+        }
+    )
 
     # Per-difficulty breakdown
     difficulty_groups = defaultdict(list)
@@ -393,8 +420,13 @@ def aggregate(results: list[QueryResult]) -> dict[str, Any]:
             "count": len(group),
             "hit_at_5": float(np.mean([r.hit_at_5 for r in ans])) if ans else None,
             "mrr": float(np.mean([r.rr for r in ans])) if ans else None,
-            "token_f1": float(np.mean([r.token_f1_score for r in ans
-                                       if r.token_f1_score > 0] or [0.0])) if ans else None,
+            "token_f1": float(
+                np.mean(
+                    [r.token_f1_score for r in ans if r.token_f1_score > 0] or [0.0]
+                )
+            )
+            if ans
+            else None,
         }
 
     return m
@@ -404,6 +436,7 @@ def aggregate(results: list[QueryResult]) -> dict[str, Any]:
 #  Gate check
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def check_gates(metrics: dict, thresholds: dict | None = None) -> list[dict]:
     """Compare metrics against production readiness thresholds."""
     thresholds = thresholds or GATE_THRESHOLDS
@@ -411,16 +444,28 @@ def check_gates(metrics: dict, thresholds: dict | None = None) -> list[dict]:
     for metric_key, threshold in thresholds.items():
         value = metrics.get(metric_key)
         if value is None:
-            checks.append({"metric": metric_key, "value": None,
-                           "threshold": threshold, "passed": False,
-                           "reason": "metric not computed"})
+            checks.append(
+                {
+                    "metric": metric_key,
+                    "value": None,
+                    "threshold": threshold,
+                    "passed": False,
+                    "reason": "metric not computed",
+                }
+            )
             continue
         if "latency" in metric_key or "error" in metric_key:
             passed = value <= threshold
         else:
             passed = value >= threshold
-        checks.append({"metric": metric_key, "value": round(value, 4),
-                        "threshold": threshold, "passed": passed})
+        checks.append(
+            {
+                "metric": metric_key,
+                "value": round(value, 4),
+                "threshold": threshold,
+                "passed": passed,
+            }
+        )
     return checks
 
 
@@ -428,27 +473,32 @@ def check_gates(metrics: dict, thresholds: dict | None = None) -> list[dict]:
 #  Pretty printing
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def print_retrieval_table(all_metrics: list[dict]) -> None:
-    print("\n" + "="*88)
+    print("\n" + "=" * 88)
     print("  RETRIEVAL METRICS")
-    print("="*88)
-    header = (f"{'Config':<30} {'Hit@3':>6} {'Hit@5':>6} {'MRR':>6} "
-              f"{'NDCG@3':>7} {'NDCG@5':>7} {'P@5':>6} {'R@5':>6}")
+    print("=" * 88)
+    header = (
+        f"{'Config':<30} {'Hit@3':>6} {'Hit@5':>6} {'MRR':>6} "
+        f"{'NDCG@3':>7} {'NDCG@5':>7} {'P@5':>6} {'R@5':>6}"
+    )
     print(header)
     print("-" * len(header))
     for m in all_metrics:
-        print(f"{m['config']:<30} "
-              f"{m.get('hit_rate_at_3',0):>6.3f} {m.get('hit_rate_at_5',0):>6.3f} "
-              f"{m.get('mrr',0):>6.3f} {m.get('ndcg_at_3',0):>7.3f} "
-              f"{m.get('ndcg_at_5',0):>7.3f} {m.get('precision_at_5',0):>6.3f} "
-              f"{m.get('recall_at_5',0):>6.3f}")
+        print(
+            f"{m['config']:<30} "
+            f"{m.get('hit_rate_at_3', 0):>6.3f} {m.get('hit_rate_at_5', 0):>6.3f} "
+            f"{m.get('mrr', 0):>6.3f} {m.get('ndcg_at_3', 0):>7.3f} "
+            f"{m.get('ndcg_at_5', 0):>7.3f} {m.get('precision_at_5', 0):>6.3f} "
+            f"{m.get('recall_at_5', 0):>6.3f}"
+        )
     print("-" * len(header))
 
 
 def print_generation_table(all_metrics: list[dict]) -> None:
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  GENERATION METRICS")
-    print("="*60)
+    print("=" * 60)
     has_judge = any(m.get("llm_judge_avg") for m in all_metrics)
     header = f"{'Config':<30} {'Token-F1':>9} {'ROUGE-L':>8}"
     if has_judge:
@@ -456,7 +506,7 @@ def print_generation_table(all_metrics: list[dict]) -> None:
     print(header)
     print("-" * len(header))
     for m in all_metrics:
-        line = f"{m['config']:<30} {m.get('token_f1',0):>9.3f} {m.get('rouge_l_f1',0):>8.3f}"
+        line = f"{m['config']:<30} {m.get('token_f1', 0):>9.3f} {m.get('rouge_l_f1', 0):>8.3f}"
         if has_judge:
             j = m.get("llm_judge_avg")
             line += f" {j:>10.2f}" if j else f" {'N/A':>10}"
@@ -465,36 +515,46 @@ def print_generation_table(all_metrics: list[dict]) -> None:
 
 
 def print_latency_table(all_metrics: list[dict]) -> None:
-    print("\n" + "="*110)
+    print("\n" + "=" * 110)
     print("  LATENCY & THROUGHPUT")
-    print("="*110)
-    print(f"{'':<30} {'--- end-to-end (ms) ---':>28} {'':>6}  {'--- stage breakdown (ms) ---':>30}")
-    header = (f"{'Config':<30} {'p50':>7} {'p95':>7} {'p99':>7} "
-              f"{'mean':>7} {'QPS':>6}  {'ret':>8} {'rerank':>7} {'gen':>8}")
+    print("=" * 110)
+    print(
+        f"{'':<30} {'--- end-to-end (ms) ---':>28} {'':>6}  {'--- stage breakdown (ms) ---':>30}"
+    )
+    header = (
+        f"{'Config':<30} {'p50':>7} {'p95':>7} {'p99':>7} "
+        f"{'mean':>7} {'QPS':>6}  {'ret':>8} {'rerank':>7} {'gen':>8}"
+    )
     print(header)
     print("-" * len(header))
     for m in all_metrics:
-        print(f"{m['config']:<30} "
-              f"{m.get('latency_p50_ms',0):>7.1f} {m.get('latency_p95_ms',0):>7.1f} "
-              f"{m.get('latency_p99_ms',0):>7.1f} {m.get('latency_mean_ms',0):>7.1f} "
-              f"{m.get('throughput_qps',0):>6.1f}  "
-              f"{m.get('retrieval_p50_ms',0):>8.1f} {m.get('rerank_p50_ms',0):>7.1f} "
-              f"{m.get('generation_p50_ms',0):>8.1f}")
+        print(
+            f"{m['config']:<30} "
+            f"{m.get('latency_p50_ms', 0):>7.1f} {m.get('latency_p95_ms', 0):>7.1f} "
+            f"{m.get('latency_p99_ms', 0):>7.1f} {m.get('latency_mean_ms', 0):>7.1f} "
+            f"{m.get('throughput_qps', 0):>6.1f}  "
+            f"{m.get('retrieval_p50_ms', 0):>8.1f} {m.get('rerank_p50_ms', 0):>7.1f} "
+            f"{m.get('generation_p50_ms', 0):>8.1f}"
+        )
     print("-" * len(header))
 
 
 def print_gate_results(checks: list[dict]) -> bool:
-    print("\n" + "="*72)
+    print("\n" + "=" * 72)
     print("  PRODUCTION READINESS GATES")
-    print("="*72)
+    print("=" * 72)
     all_pass = True
     for c in checks:
         status = "PASS" if c["passed"] else "FAIL"
         if not c["passed"]:
             all_pass = False
         val = f"{c['value']:.4f}" if c["value"] is not None else "N/A"
-        direction = "<=" if ("latency" in c["metric"] or "error" in c["metric"]) else ">="
-        print(f"  [{status}]  {c['metric']:<20}  actual={val:<10}  threshold {direction} {c['threshold']}")
+        direction = (
+            "<=" if ("latency" in c["metric"] or "error" in c["metric"]) else ">="
+        )
+        print(
+            f"  [{status}]  {c['metric']:<20}  actual={val:<10}  threshold {direction} {c['threshold']}"
+        )
     verdict = "ALL GATES PASSED" if all_pass else "SOME GATES FAILED"
     print(f"\n  Result: {verdict}")
     return all_pass
@@ -517,11 +577,41 @@ def print_difficulty_breakdown(metrics: dict) -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 
 EVAL_CONFIGS = [
-    {"label": "recursive_512_rerank",    "chunk_strategy": "recursive",     "chunk_size": 512, "chunk_overlap": 128, "use_reranker": True},
-    {"label": "recursive_512_no_rerank", "chunk_strategy": "recursive",     "chunk_size": 512, "chunk_overlap": 128, "use_reranker": False},
-    {"label": "recursive_256_rerank",    "chunk_strategy": "recursive",     "chunk_size": 256, "chunk_overlap": 64,  "use_reranker": True},
-    {"label": "fixed_512_rerank",        "chunk_strategy": "fixed_overlap", "chunk_size": 512, "chunk_overlap": 128, "use_reranker": True},
-    {"label": "fixed_256_rerank",        "chunk_strategy": "fixed_overlap", "chunk_size": 256, "chunk_overlap": 64,  "use_reranker": True},
+    {
+        "label": "recursive_512_rerank",
+        "chunk_strategy": "recursive",
+        "chunk_size": 512,
+        "chunk_overlap": 128,
+        "use_reranker": True,
+    },
+    {
+        "label": "recursive_512_no_rerank",
+        "chunk_strategy": "recursive",
+        "chunk_size": 512,
+        "chunk_overlap": 128,
+        "use_reranker": False,
+    },
+    {
+        "label": "recursive_256_rerank",
+        "chunk_strategy": "recursive",
+        "chunk_size": 256,
+        "chunk_overlap": 64,
+        "use_reranker": True,
+    },
+    {
+        "label": "fixed_512_rerank",
+        "chunk_strategy": "fixed_overlap",
+        "chunk_size": 512,
+        "chunk_overlap": 128,
+        "use_reranker": True,
+    },
+    {
+        "label": "fixed_256_rerank",
+        "chunk_strategy": "fixed_overlap",
+        "chunk_size": 256,
+        "chunk_overlap": 64,
+        "use_reranker": True,
+    },
 ]
 
 
@@ -529,11 +619,20 @@ EVAL_CONFIGS = [
 #  Main
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def main():
-    parser = argparse.ArgumentParser(description="RAG Pipeline Backtesting & Evaluation")
-    parser.add_argument("--config", type=str, default=None,
-                        help="Path to config.yaml (loads gate thresholds and pipeline settings)")
-    parser.add_argument("--test-file", "--test-set", type=str, help="JSONL test file path")
+    parser = argparse.ArgumentParser(
+        description="RAG Pipeline Backtesting & Evaluation"
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config.yaml (loads gate thresholds and pipeline settings)",
+    )
+    parser.add_argument(
+        "--test-file", "--test-set", type=str, help="JSONL test file path"
+    )
     parser.add_argument("--generate-synthetic", action="store_true")
     parser.add_argument("--num-samples", type=int, default=None)
     parser.add_argument("--output", type=str, default="evaluation/results.json")
@@ -549,6 +648,7 @@ def main():
     # Load gate thresholds from config.yaml if provided
     if args.config:
         from src.config import load_gate_thresholds
+
         custom_gates = load_gate_thresholds(args.config)
         GATE_THRESHOLDS.update(custom_gates)
         print(f"  Loaded config: {args.config}")
@@ -570,7 +670,9 @@ def main():
     print(f"  Loaded {len(test_samples)} test samples")
 
     documents = get_corpus()
-    print(f"  Corpus: {len(documents)} documents, {sum(len(d['pages']) for d in documents)} pages")
+    print(
+        f"  Corpus: {len(documents)} documents, {sum(len(d['pages']) for d in documents)} pages"
+    )
 
     # ── Initialize shared embedding service once ──────────────────────
     print("\n  Loading embedding model (one-time)...")
@@ -582,8 +684,10 @@ def main():
     if args.single_config:
         configs = [c for c in EVAL_CONFIGS if c["label"] == args.single_config]
         if not configs:
-            avail = [c['label'] for c in EVAL_CONFIGS]
-            print(f"  ERROR: config '{args.single_config}' not found. Available: {avail}")
+            avail = [c["label"] for c in EVAL_CONFIGS]
+            print(
+                f"  ERROR: config '{args.single_config}' not found. Available: {avail}"
+            )
             sys.exit(1)
     else:
         configs = EVAL_CONFIGS
@@ -595,19 +699,27 @@ def main():
 
     for cfg in configs:
         results = evaluate_config(
-            test_samples=test_samples, documents=documents, embed_svc=embed_svc,
-            chunk_strategy=cfg["chunk_strategy"], chunk_size=cfg["chunk_size"],
-            chunk_overlap=cfg["chunk_overlap"], use_reranker=cfg["use_reranker"],
-            top_k=args.top_k, label=cfg["label"], use_llm_judge=args.llm_judge,
+            test_samples=test_samples,
+            documents=documents,
+            embed_svc=embed_svc,
+            chunk_strategy=cfg["chunk_strategy"],
+            chunk_size=cfg["chunk_size"],
+            chunk_overlap=cfg["chunk_overlap"],
+            use_reranker=cfg["use_reranker"],
+            top_k=args.top_k,
+            label=cfg["label"],
+            use_llm_judge=args.llm_judge,
         )
         metrics = aggregate(results)
         all_metrics.append(metrics)
-        all_detailed.append({
-            "config": cfg,
-            "metrics": {k: v for k, v in metrics.items() if k != "by_difficulty"},
-            "by_difficulty": metrics.get("by_difficulty", {}),
-            "per_query": [r.to_dict() for r in results],
-        })
+        all_detailed.append(
+            {
+                "config": cfg,
+                "metrics": {k: v for k, v in metrics.items() if k != "by_difficulty"},
+                "by_difficulty": metrics.get("by_difficulty", {}),
+                "per_query": [r.to_dict() for r in results],
+            }
+        )
         if not best_config_label or metrics.get("mrr", 0) >= max(
             (m.get("mrr", 0) for m in all_metrics[:-1]), default=0
         ):
@@ -624,15 +736,17 @@ def main():
     # ── Load test ─────────────────────────────────────────────────────
     load_result: dict | None = None
     if args.load_test:
-        print("\n" + "="*72)
+        print("\n" + "=" * 72)
         print("  CONCURRENT LOAD TEST")
-        print("="*72)
+        print("=" * 72)
 
         best_cfg = next(c for c in configs if c["label"] == best_config_label)
         load_pipeline = EvalPipeline(embed_svc, use_reranker=best_cfg["use_reranker"])
         load_pipeline.ingest_corpus(
-            documents, best_cfg["chunk_strategy"],
-            best_cfg["chunk_size"], best_cfg["chunk_overlap"],
+            documents,
+            best_cfg["chunk_strategy"],
+            best_cfg["chunk_size"],
+            best_cfg["chunk_overlap"],
         )
 
         queries = [s["query"] for s in test_samples if s.get("expected_doc_ids")]
@@ -645,7 +759,8 @@ def main():
 
         lt = run_load_test_sync(
             query_fn=lambda q: load_pipeline.query(q, top_k=args.top_k),
-            queries=queries, concurrency=args.concurrency,
+            queries=queries,
+            concurrency=args.concurrency,
             num_iterations=n_iter,
         )
         load_result = lt.summary()
@@ -679,9 +794,12 @@ def main():
     output = {
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "test_file": test_file, "num_samples": len(test_samples),
-            "num_configs": len(configs), "top_k": args.top_k,
-            "gate_thresholds": GATE_THRESHOLDS, "gates_passed": gates_passed,
+            "test_file": test_file,
+            "num_samples": len(test_samples),
+            "num_configs": len(configs),
+            "top_k": args.top_k,
+            "gate_thresholds": GATE_THRESHOLDS,
+            "gates_passed": gates_passed,
         },
         "configs": all_detailed,
     }
@@ -694,8 +812,10 @@ def main():
 
     best = max(all_metrics, key=lambda m: m.get("mrr", 0))
     print(f"\n  Best config by MRR: {best['config']}")
-    print(f"    MRR={best.get('mrr',0):.3f}  Hit@5={best.get('hit_rate_at_5',0):.3f}  "
-          f"NDCG@5={best.get('ndcg_at_5',0):.3f}  ROUGE-L={best.get('rouge_l_f1',0):.3f}")
+    print(
+        f"    MRR={best.get('mrr', 0):.3f}  Hit@5={best.get('hit_rate_at_5', 0):.3f}  "
+        f"NDCG@5={best.get('ndcg_at_5', 0):.3f}  ROUGE-L={best.get('rouge_l_f1', 0):.3f}"
+    )
 
     if not args.no_gates and not gates_passed:
         print("\n  Exiting with code 1 (gate failure)")

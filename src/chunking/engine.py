@@ -34,6 +34,7 @@ def _count_tokens(text: str) -> int:
 # Base class
 # ---------------------------------------------------------------------------
 
+
 class BaseChunker(ABC):
     """Interface every chunker must implement."""
 
@@ -45,13 +46,13 @@ class BaseChunker(ABC):
         filename: str = "",
         title: str = "",
         extra_meta: dict | None = None,
-    ) -> list[Chunk]:
-        ...
+    ) -> list[Chunk]: ...
 
 
 # ---------------------------------------------------------------------------
 # 1. Recursive character splitter
 # ---------------------------------------------------------------------------
+
 
 class RecursiveChunker(BaseChunker):
     """
@@ -89,7 +90,9 @@ class RecursiveChunker(BaseChunker):
                 total_chunks=len(merged),
                 extra=extra_meta or {},
             )
-            chunks.append(Chunk(chunk_id=str(uuid.uuid4()), text=segment, metadata=meta))
+            chunks.append(
+                Chunk(chunk_id=str(uuid.uuid4()), text=segment, metadata=meta)
+            )
         return chunks
 
     # -- internals --
@@ -139,7 +142,11 @@ class RecursiveChunker(BaseChunker):
                 continue
             # Prepend tail of previous segment as overlap context
             prev_tokens = _enc.encode(splits[i - 1], disallowed_special=())
-            overlap_tokens = prev_tokens[-self.chunk_overlap :] if len(prev_tokens) > self.chunk_overlap else prev_tokens
+            overlap_tokens = (
+                prev_tokens[-self.chunk_overlap :]
+                if len(prev_tokens) > self.chunk_overlap
+                else prev_tokens
+            )
             overlap_text = _enc.decode(overlap_tokens)
             merged.append(overlap_text.strip() + " " + segment)
         return merged
@@ -148,6 +155,7 @@ class RecursiveChunker(BaseChunker):
 # ---------------------------------------------------------------------------
 # 2. Semantic chunker (embedding-similarity boundaries)
 # ---------------------------------------------------------------------------
+
 
 class SemanticChunker(BaseChunker):
     """
@@ -174,6 +182,7 @@ class SemanticChunker(BaseChunker):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._model = SentenceTransformer(self._model_name)
                 log.info("semantic_chunker.model_loaded", model=self._model_name)
             except Exception as exc:
@@ -194,9 +203,13 @@ class SemanticChunker(BaseChunker):
         sentences = self._split_sentences(text)
         if len(sentences) <= 1:
             meta = DocumentMetadata(
-                doc_id=doc_id, filename=filename, title=title,
-                chunk_index=0, chunk_strategy="semantic",
-                total_chunks=1, extra=extra_meta or {},
+                doc_id=doc_id,
+                filename=filename,
+                title=title,
+                chunk_index=0,
+                chunk_strategy="semantic",
+                total_chunks=1,
+                extra=extra_meta or {},
             )
             return [Chunk(chunk_id=str(uuid.uuid4()), text=text.strip(), metadata=meta)]
 
@@ -207,14 +220,19 @@ class SemanticChunker(BaseChunker):
                 text, doc_id, filename, title, extra_meta
             )
 
-        embeddings = model.encode(sentences, normalize_embeddings=True, show_progress_bar=False)
+        embeddings = model.encode(
+            sentences, normalize_embeddings=True, show_progress_bar=False
+        )
 
         # Compute cosine similarity between consecutive sentences
         groups: list[list[str]] = [[sentences[0]]]
         for i in range(1, len(sentences)):
             sim = float(np.dot(embeddings[i - 1], embeddings[i]))
             current_group_text = " ".join(groups[-1]) + " " + sentences[i]
-            if sim >= self.threshold and _count_tokens(current_group_text) <= self.max_tokens:
+            if (
+                sim >= self.threshold
+                and _count_tokens(current_group_text) <= self.max_tokens
+            ):
                 groups[-1].append(sentences[i])
             else:
                 groups.append([sentences[i]])
@@ -222,27 +240,34 @@ class SemanticChunker(BaseChunker):
         chunks: list[Chunk] = []
         for idx, group in enumerate(groups):
             meta = DocumentMetadata(
-                doc_id=doc_id, filename=filename, title=title,
-                chunk_index=idx, chunk_strategy="semantic",
-                total_chunks=len(groups), extra=extra_meta or {},
+                doc_id=doc_id,
+                filename=filename,
+                title=title,
+                chunk_index=idx,
+                chunk_strategy="semantic",
+                total_chunks=len(groups),
+                extra=extra_meta or {},
             )
-            chunks.append(Chunk(
-                chunk_id=str(uuid.uuid4()),
-                text=" ".join(group).strip(),
-                metadata=meta,
-            ))
+            chunks.append(
+                Chunk(
+                    chunk_id=str(uuid.uuid4()),
+                    text=" ".join(group).strip(),
+                    metadata=meta,
+                )
+            )
         return chunks
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
         """Naive sentence splitter (handles ., !, ?)."""
-        parts = re.split(r'(?<=[.!?])\s+', text.strip())
+        parts = re.split(r"(?<=[.!?])\s+", text.strip())
         return [s.strip() for s in parts if s.strip()]
 
 
 # ---------------------------------------------------------------------------
 # 3. Fixed overlap chunker
 # ---------------------------------------------------------------------------
+
 
 class FixedOverlapChunker(BaseChunker):
     """
@@ -277,9 +302,13 @@ class FixedOverlapChunker(BaseChunker):
         chunks: list[Chunk] = []
         for idx, seg in enumerate(segments):
             meta = DocumentMetadata(
-                doc_id=doc_id, filename=filename, title=title,
-                chunk_index=idx, chunk_strategy="fixed_overlap",
-                total_chunks=len(segments), extra=extra_meta or {},
+                doc_id=doc_id,
+                filename=filename,
+                title=title,
+                chunk_index=idx,
+                chunk_strategy="fixed_overlap",
+                total_chunks=len(segments),
+                extra=extra_meta or {},
             )
             chunks.append(Chunk(chunk_id=str(uuid.uuid4()), text=seg, metadata=meta))
         return chunks
@@ -305,7 +334,9 @@ def get_chunker(
     """Factory: returns a chunker instance by strategy name."""
     cls = CHUNKER_REGISTRY.get(strategy)
     if cls is None:
-        raise ValueError(f"Unknown chunk strategy: {strategy!r}. Available: {list(CHUNKER_REGISTRY)}")
+        raise ValueError(
+            f"Unknown chunk strategy: {strategy!r}. Available: {list(CHUNKER_REGISTRY)}"
+        )
 
     if strategy == "recursive":
         return cls(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

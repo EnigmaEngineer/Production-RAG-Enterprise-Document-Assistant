@@ -54,7 +54,9 @@ class LLMClient:
         self._base_url = base_url or settings.llm_base_url
         self._model = model or settings.llm_model
         self._max_tokens = max_tokens or settings.llm_max_tokens
-        self._temperature = temperature if temperature is not None else settings.llm_temperature
+        self._temperature = (
+            temperature if temperature is not None else settings.llm_temperature
+        )
         self._timeout = timeout or settings.llm_timeout_s
 
         self._client = OpenAI(
@@ -100,14 +102,18 @@ class LLMClient:
                 "llm_client.generate",
                 model=self._model,
                 prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
-                completion_tokens=response.usage.completion_tokens if response.usage else 0,
+                completion_tokens=response.usage.completion_tokens
+                if response.usage
+                else 0,
                 latency_ms=round(elapsed, 1),
             )
             return answer.strip(), elapsed
 
         except (APITimeoutError, APIConnectionError) as exc:
             elapsed = (time.perf_counter() - t0) * 1000
-            log.error("llm_client.timeout", error=str(exc), latency_ms=round(elapsed, 1))
+            log.error(
+                "llm_client.timeout", error=str(exc), latency_ms=round(elapsed, 1)
+            )
             raise TimeoutError(f"LLM request timed out after {elapsed:.0f}ms") from exc
 
         except Exception as exc:
@@ -136,7 +142,7 @@ class DummyLLMClient:
     def generate(self, query: str, context_chunks: list[Chunk]) -> tuple[str, float]:
         t0 = time.perf_counter()
         # Build a simple answer referencing each chunk
-        refs = ", ".join(f"[{i+1}]" for i in range(len(context_chunks)))
+        refs = ", ".join(f"[{i + 1}]" for i in range(len(context_chunks)))
         answer = (
             f"Based on the provided documents {refs}, here is the answer to your question: "
             f"'{query}'. The relevant information can be found in the referenced passages."

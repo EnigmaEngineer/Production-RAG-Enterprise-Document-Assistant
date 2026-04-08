@@ -33,15 +33,17 @@ class CitationFormatter:
             if len(chunk.text) > self.SNIPPET_MAX_LEN:
                 snippet += "..."
 
-            citations.append(Citation(
-                chunk_id=chunk.chunk_id,
-                doc_id=chunk.metadata.doc_id,
-                filename=chunk.metadata.filename,
-                page_number=chunk.metadata.page_number,
-                chunk_index=chunk.metadata.chunk_index,
-                text_snippet=snippet,
-                relevance_score=round(chunk.rerank_score, 4),
-            ))
+            citations.append(
+                Citation(
+                    chunk_id=chunk.chunk_id,
+                    doc_id=chunk.metadata.doc_id,
+                    filename=chunk.metadata.filename,
+                    page_number=chunk.metadata.page_number,
+                    chunk_index=chunk.metadata.chunk_index,
+                    text_snippet=snippet,
+                    relevance_score=round(chunk.rerank_score, 4),
+                )
+            )
         return citations
 
     def format_context_for_llm(self, chunks: list[Chunk]) -> str:
@@ -72,7 +74,8 @@ class CitationFormatter:
         and verify they map to real chunks. Returns list of invalid references.
         """
         import re
-        refs = re.findall(r'\[(\d+)\]', answer)
+
+        refs = re.findall(r"\[(\d+)\]", answer)
         invalid: list[str] = []
         for ref in refs:
             idx = int(ref) - 1

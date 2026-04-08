@@ -27,10 +27,12 @@ os.environ["RAG_LOG_LEVEL"] = "error"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def embed_svc():
     """Shared embedding service — loaded once for all tests in this module."""
     from src.retrieval.embeddings import EmbeddingService
+
     svc = EmbeddingService()
     svc.encode("warmup")
     return svc
@@ -40,6 +42,7 @@ def embed_svc():
 def pipeline(embed_svc):
     """Fresh RAG pipeline per test with shared embedding service."""
     from src.api.pipeline import RAGPipeline
+
     p = RAGPipeline()
     p.startup()
     yield p
@@ -50,6 +53,7 @@ def pipeline(embed_svc):
 # Test 1: Full ingest → query round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestIngestAndQuery:
     """Verify that a document ingested via the pipeline can be retrieved
     and produces a response with valid citations."""
@@ -58,42 +62,48 @@ class TestIngestAndQuery:
         from src.models.schemas import IngestRequest, QueryRequest
 
         # Ingest two topically distinct documents
-        r1 = pipeline.ingest(IngestRequest(
-            text=(
-                "Kubernetes is an open-source container orchestration platform. "
-                "It automates deployment, scaling, and management of containerized "
-                "applications. The control plane runs the API server, etcd, the "
-                "scheduler, and the controller manager."
-            ),
-            filename="k8s_architecture.pdf",
-            title="Kubernetes Architecture",
-            chunk_strategy="recursive",
-            chunk_size=256,
-            chunk_overlap=64,
-        ))
+        r1 = pipeline.ingest(
+            IngestRequest(
+                text=(
+                    "Kubernetes is an open-source container orchestration platform. "
+                    "It automates deployment, scaling, and management of containerized "
+                    "applications. The control plane runs the API server, etcd, the "
+                    "scheduler, and the controller manager."
+                ),
+                filename="k8s_architecture.pdf",
+                title="Kubernetes Architecture",
+                chunk_strategy="recursive",
+                chunk_size=256,
+                chunk_overlap=64,
+            )
+        )
         assert r1.num_chunks >= 1, "Document should produce at least one chunk"
         k8s_doc_id = r1.doc_id
 
-        r2 = pipeline.ingest(IngestRequest(
-            text=(
-                "Python is a high-level programming language known for its "
-                "readability and versatility. It supports multiple paradigms "
-                "including procedural, object-oriented, and functional programming."
-            ),
-            filename="python_intro.pdf",
-            title="Introduction to Python",
-            chunk_strategy="recursive",
-            chunk_size=256,
-            chunk_overlap=64,
-        ))
+        r2 = pipeline.ingest(
+            IngestRequest(
+                text=(
+                    "Python is a high-level programming language known for its "
+                    "readability and versatility. It supports multiple paradigms "
+                    "including procedural, object-oriented, and functional programming."
+                ),
+                filename="python_intro.pdf",
+                title="Introduction to Python",
+                chunk_strategy="recursive",
+                chunk_size=256,
+                chunk_overlap=64,
+            )
+        )
         assert r2.num_chunks >= 1
 
         # Query about Kubernetes
-        response = pipeline.query(QueryRequest(
-            query="What components are in the Kubernetes control plane?",
-            top_k=3,
-            rerank=False,
-        ))
+        response = pipeline.query(
+            QueryRequest(
+                query="What components are in the Kubernetes control plane?",
+                top_k=3,
+                rerank=False,
+            )
+        )
 
         # Verify structure
         assert response.answer, "Answer should not be empty"
@@ -114,10 +124,12 @@ class TestIngestAndQuery:
         """Query on an empty index should not crash."""
         from src.models.schemas import QueryRequest
 
-        response = pipeline.query(QueryRequest(
-            query="What is the meaning of life?",
-            top_k=5,
-        ))
+        response = pipeline.query(
+            QueryRequest(
+                query="What is the meaning of life?",
+                top_k=5,
+            )
+        )
         assert response.answer, "Should return some answer even with no docs"
         assert response.num_chunks_retrieved == 0
 
@@ -127,15 +139,25 @@ class TestIngestAndQuery:
 
         text = " ".join(["This is a test sentence with several words."] * 50)
 
-        r_recursive = pipeline.ingest(IngestRequest(
-            text=text, filename="test.txt",
-            chunk_strategy="recursive", chunk_size=64, chunk_overlap=16,
-        ))
+        r_recursive = pipeline.ingest(
+            IngestRequest(
+                text=text,
+                filename="test.txt",
+                chunk_strategy="recursive",
+                chunk_size=64,
+                chunk_overlap=16,
+            )
+        )
 
-        r_fixed = pipeline.ingest(IngestRequest(
-            text=text, filename="test2.txt",
-            chunk_strategy="fixed_overlap", chunk_size=64, chunk_overlap=16,
-        ))
+        r_fixed = pipeline.ingest(
+            IngestRequest(
+                text=text,
+                filename="test2.txt",
+                chunk_strategy="fixed_overlap",
+                chunk_size=64,
+                chunk_overlap=16,
+            )
+        )
 
         # Both should produce chunks, but counts may differ
         assert r_recursive.num_chunks >= 1
@@ -148,6 +170,7 @@ class TestIngestAndQuery:
 # Test 2: Backtest script on synthetic data
 # ---------------------------------------------------------------------------
 
+
 class TestBacktestScript:
     """Run the actual backtest.py script on synthetic data and verify
     it produces valid output."""
@@ -158,11 +181,15 @@ class TestBacktestScript:
 
         result = subprocess.run(
             [
-                sys.executable, "evaluation/backtest.py",
+                sys.executable,
+                "evaluation/backtest.py",
                 "--generate-synthetic",
-                "--num-samples", "5",
-                "--single-config", "recursive_512_no_rerank",
-                "--output", str(output_file),
+                "--num-samples",
+                "5",
+                "--single-config",
+                "recursive_512_no_rerank",
+                "--output",
+                str(output_file),
                 "--no-gates",
             ],
             capture_output=True,
@@ -214,21 +241,23 @@ class TestBacktestScript:
         """Verify that --config flag loads YAML settings."""
         config_file = tmp_path / "test_config.yaml"
         config_file.write_text(
-            "gates:\n"
-            "  mrr: 0.99\n"
-            "  hit_rate_at_5: 0.99\n"
-            "chunk_size: 256\n"
+            "gates:\n  mrr: 0.99\n  hit_rate_at_5: 0.99\nchunk_size: 256\n"
         )
         output_file = tmp_path / "results.json"
 
         subprocess.run(
             [
-                sys.executable, "evaluation/backtest.py",
-                "--config", str(config_file),
+                sys.executable,
+                "evaluation/backtest.py",
+                "--config",
+                str(config_file),
                 "--generate-synthetic",
-                "--num-samples", "3",
-                "--single-config", "recursive_512_no_rerank",
-                "--output", str(output_file),
+                "--num-samples",
+                "3",
+                "--single-config",
+                "recursive_512_no_rerank",
+                "--output",
+                str(output_file),
             ],
             capture_output=True,
             text=True,
@@ -244,4 +273,6 @@ class TestBacktestScript:
 
         # With MRR gate at 0.99, this should likely fail the gate
         # (exit code 1) unless the synthetic data gets perfect MRR
-        assert output_file.exists(), "Results should still be written even on gate failure"
+        assert output_file.exists(), (
+            "Results should still be written even on gate failure"
+        )

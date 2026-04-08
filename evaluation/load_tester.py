@@ -30,6 +30,7 @@ from evaluation.metrics import latency_stats
 @dataclass
 class LoadTestResult:
     """Results from a load test run."""
+
     total_requests: int = 0
     successful: int = 0
     failed: int = 0

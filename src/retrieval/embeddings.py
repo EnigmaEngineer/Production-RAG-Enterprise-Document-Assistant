@@ -35,8 +35,11 @@ class EmbeddingService:
                 return
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._model = SentenceTransformer(self._model_name, device=self._device)
-                log.info("embedding.loaded", model=self._model_name, device=self._device)
+                log.info(
+                    "embedding.loaded", model=self._model_name, device=self._device
+                )
             except Exception as exc:
                 log.error("embedding.load_failed", error=str(exc))
                 raise RuntimeError(f"Failed to load embedding model: {exc}") from exc

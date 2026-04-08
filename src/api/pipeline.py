@@ -14,7 +14,9 @@ from typing import Any
 
 from src.config import settings
 from src.models.schemas import (
-    IngestRequest, IngestResponse, QueryRequest,
+    IngestRequest,
+    IngestResponse,
+    QueryRequest,
     QueryResponse,
 )
 from src.chunking.engine import get_chunker
@@ -110,7 +112,9 @@ class RAGPipeline:
         )
 
         if not chunks:
-            return IngestResponse(doc_id=doc_id, num_chunks=0, chunk_strategy=request.chunk_strategy)
+            return IngestResponse(
+                doc_id=doc_id, num_chunks=0, chunk_strategy=request.chunk_strategy
+            )
 
         # 2. Embed
         texts = [c.text for c in chunks]
@@ -159,7 +163,9 @@ class RAGPipeline:
                 top_k=request.top_k,
             )
         else:
-            reranked = sorted(candidates, key=lambda c: c.rrf_score, reverse=True)[: request.top_k]
+            reranked = sorted(candidates, key=lambda c: c.rrf_score, reverse=True)[
+                : request.top_k
+            ]
             for c in reranked:
                 c.rerank_score = c.rrf_score
         rerank_ms = (time.perf_counter() - t_rr) * 1000
@@ -188,7 +194,7 @@ class RAGPipeline:
             answer=answer,
             citations=citations,
             query=request.query,
-            model=getattr(self._llm_client, '_model', 'unknown'),
+            model=getattr(self._llm_client, "_model", "unknown"),
             latency_ms=round(total_ms, 1),
             retrieval_latency_ms=round(retrieval_ms, 1),
             rerank_latency_ms=round(rerank_ms, 1),
@@ -202,7 +208,9 @@ class RAGPipeline:
     def stats(self) -> dict[str, Any]:
         """Return current index statistics."""
         return {
-            "vector_count": self._retriever.vector_store.count() if self._retriever else 0,
+            "vector_count": self._retriever.vector_store.count()
+            if self._retriever
+            else 0,
             "bm25_count": self._retriever.bm25_index.count() if self._retriever else 0,
             "ready": self._ready,
         }

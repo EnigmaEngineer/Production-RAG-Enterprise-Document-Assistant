@@ -28,6 +28,7 @@ from src.models.schemas import Chunk, DocumentMetadata
 # Chunking tests
 # ---------------------------------------------------------------------------
 
+
 class TestRecursiveChunker:
     def test_short_text_single_chunk(self):
         chunker = RecursiveChunker(chunk_size=512, chunk_overlap=128)
@@ -47,7 +48,9 @@ class TestRecursiveChunker:
 
     def test_metadata_populated(self):
         chunker = RecursiveChunker(chunk_size=512)
-        chunks = chunker.chunk("Some text.", doc_id="d3", filename="f.pdf", title="Title")
+        chunks = chunker.chunk(
+            "Some text.", doc_id="d3", filename="f.pdf", title="Title"
+        )
         assert chunks[0].metadata.filename == "f.pdf"
         assert chunks[0].metadata.title == "Title"
         assert chunks[0].metadata.total_chunks == 1
@@ -81,6 +84,7 @@ class TestChunkerFactory:
 # ---------------------------------------------------------------------------
 # Retrieval tests
 # ---------------------------------------------------------------------------
+
 
 def _make_chunk(chunk_id: str, text: str, doc_id: str, embedding: list[float]) -> Chunk:
     """Helper to create a Chunk with an embedding."""
@@ -125,10 +129,21 @@ class TestBM25Index:
         # BM25 IDF needs >=3 documents to produce nonzero scores
         # (terms in >50% of a 2-doc corpus get IDF≈0)
         chunks = [
-            Chunk(chunk_id="c1", text="kubernetes pod deployment scaling cluster management"),
-            Chunk(chunk_id="c2", text="python machine learning deep neural network training"),
-            Chunk(chunk_id="c3", text="database sql query performance optimization indexing"),
-            Chunk(chunk_id="c4", text="docker container image registry build push pull"),
+            Chunk(
+                chunk_id="c1",
+                text="kubernetes pod deployment scaling cluster management",
+            ),
+            Chunk(
+                chunk_id="c2",
+                text="python machine learning deep neural network training",
+            ),
+            Chunk(
+                chunk_id="c3",
+                text="database sql query performance optimization indexing",
+            ),
+            Chunk(
+                chunk_id="c4", text="docker container image registry build push pull"
+            ),
         ]
         index.add(chunks)
         assert index.count() == 4
@@ -168,6 +183,7 @@ class TestHybridRetriever:
 # Reranker tests
 # ---------------------------------------------------------------------------
 
+
 class TestDummyReranker:
     def test_preserves_rrf_order(self):
         reranker = DummyReranker()
@@ -191,6 +207,7 @@ class TestDummyReranker:
 # ---------------------------------------------------------------------------
 # Citation tests
 # ---------------------------------------------------------------------------
+
 
 class TestCitationFormatter:
     def test_build_citations(self):
@@ -225,7 +242,8 @@ class TestCitationFormatter:
         formatter = CitationFormatter()
         long_text = "x" * 300
         c = Chunk(
-            chunk_id="c1", text=long_text,
+            chunk_id="c1",
+            text=long_text,
             metadata=DocumentMetadata(doc_id="d1"),
         )
         c.rerank_score = 0.5
@@ -236,6 +254,7 @@ class TestCitationFormatter:
 # ---------------------------------------------------------------------------
 # LLM client tests
 # ---------------------------------------------------------------------------
+
 
 class TestDummyLLMClient:
     def test_generates_answer_with_references(self):

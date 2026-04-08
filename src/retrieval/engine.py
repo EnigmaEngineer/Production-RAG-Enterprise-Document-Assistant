@@ -22,11 +22,14 @@ log = get_logger(__name__)
 # Vector store interface + implementations
 # ---------------------------------------------------------------------------
 
+
 class VectorStore(ABC):
     @abstractmethod
     def add(self, chunks: list[Chunk]) -> None: ...
     @abstractmethod
-    def search(self, query_embedding: np.ndarray, top_k: int) -> list[tuple[str, float]]: ...
+    def search(
+        self, query_embedding: np.ndarray, top_k: int
+    ) -> list[tuple[str, float]]: ...
     @abstractmethod
     def count(self) -> int: ...
     @abstractmethod
@@ -38,8 +41,11 @@ class FAISSStore(VectorStore):
 
     def __init__(self, dim: int = 768, index_path: str | None = None):
         import faiss
+
         self._dim = dim
-        self._index = faiss.IndexFlatIP(dim)  # inner product (cosine on normalized vecs)
+        self._index = faiss.IndexFlatIP(
+            dim
+        )  # inner product (cosine on normalized vecs)
         self._id_map: list[str] = []  # chunk_id at each position
         self._chunk_map: dict[str, Chunk] = {}
         self._lock = threading.Lock()
@@ -68,7 +74,9 @@ class FAISSStore(VectorStore):
                 self._chunk_map[c.chunk_id] = c
         log.info("faiss_store.added", count=len(chunks), total=self._index.ntotal)
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 100) -> list[tuple[str, float]]:
+    def search(
+        self, query_embedding: np.ndarray, top_k: int = 100
+    ) -> list[tuple[str, float]]:
         if self._index.ntotal == 0:
             return []
         qvec = query_embedding.reshape(1, -1).astype(np.float32)
@@ -94,12 +102,17 @@ class FAISSStore(VectorStore):
         """Delete all chunks from a document. FAISS doesn't support deletion,
         so we rebuild the index without those chunks."""
         with self._lock:
-            to_keep = [cid for cid in self._id_map if self._chunk_map[cid].metadata.doc_id != doc_id]
+            to_keep = [
+                cid
+                for cid in self._id_map
+                if self._chunk_map[cid].metadata.doc_id != doc_id
+            ]
             removed = len(self._id_map) - len(to_keep)
             if removed == 0:
                 return 0
 
             import faiss
+
             new_index = faiss.IndexFlatIP(self._dim)
             new_id_map: list[str] = []
             embeddings = []
@@ -135,6 +148,7 @@ class FAISSStore(VectorStore):
 # ---------------------------------------------------------------------------
 # BM25 sparse index (in-memory)
 # ---------------------------------------------------------------------------
+
 
 class BM25Index:
     """Wraps rank_bm25 with chunk ID tracking and live rebuild."""
@@ -201,6 +215,7 @@ class BM25Index:
 # Hybrid retriever with RRF fusion
 # ---------------------------------------------------------------------------
 
+
 class HybridRetriever:
     """
     Combines vector search and BM25, fuses results with Reciprocal Rank Fusion.
@@ -257,7 +272,11 @@ class HybridRetriever:
         sorted_ids = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
         chunks: list[Chunk] = []
         for cid in sorted_ids:
-            chunk = self.vector_store.get_chunk(cid) if isinstance(self.vector_store, FAISSStore) else None
+            chunk = (
+                self.vector_store.get_chunk(cid)
+                if isinstance(self.vector_store, FAISSStore)
+                else None
+            )
             if chunk is None:
                 continue
             # Attach scores for downstream use

@@ -51,7 +51,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "info"
-    api_key: str = Field(default="dev-key-change-me", description="Bearer token for auth")
+    api_key: str = Field(
+        default="dev-key-change-me", description="Bearer token for auth"
+    )
     request_timeout_s: float = 30.0
 
     # --- Chunking ---

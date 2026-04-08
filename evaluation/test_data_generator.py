@@ -86,21 +86,27 @@ SYNTHETIC_QUERIES = [
     {
         "query": "How does FAISS handle data persistence?",
         "expected_doc_ids": ["doc_002"],
-        "relevant_chunks": ["FAISS operates entirely in memory and does not provide built-in persistence"],
+        "relevant_chunks": [
+            "FAISS operates entirely in memory and does not provide built-in persistence"
+        ],
         "expected_answer": "FAISS operates entirely in memory and does not provide built-in persistence.",
         "difficulty": "easy",
     },
     {
         "query": "What is the benefit of hybrid retrieval in RAG systems?",
         "expected_doc_ids": ["doc_003"],
-        "relevant_chunks": ["Hybrid retrieval using both dense and sparse methods improves recall"],
+        "relevant_chunks": [
+            "Hybrid retrieval using both dense and sparse methods improves recall"
+        ],
         "expected_answer": "Hybrid retrieval using both dense and sparse methods improves recall in RAG systems.",
         "difficulty": "easy",
     },
     {
         "query": "What tracing sample rate is recommended for production?",
         "expected_doc_ids": ["doc_004"],
-        "relevant_chunks": ["Trace sampling at 10% is sufficient for most production workloads"],
+        "relevant_chunks": [
+            "Trace sampling at 10% is sufficient for most production workloads"
+        ],
         "expected_answer": "Trace sampling at 10 percent is sufficient for most production workloads.",
         "difficulty": "easy",
     },
@@ -108,28 +114,38 @@ SYNTHETIC_QUERIES = [
     {
         "query": "How does Qdrant support metadata filtering during vector search?",
         "expected_doc_ids": ["doc_002"],
-        "relevant_chunks": ["payload filtering which allows metadata-based pre-filtering before vector search"],
+        "relevant_chunks": [
+            "payload filtering which allows metadata-based pre-filtering before vector search"
+        ],
         "expected_answer": "Qdrant supports payload filtering which allows metadata-based pre-filtering before vector search, filtering results based on metadata before the vector similarity computation.",
         "difficulty": "medium",
     },
     {
         "query": "Why does chunk overlap matter for RAG quality?",
         "expected_doc_ids": ["doc_003"],
-        "relevant_chunks": ["Overlap between chunks prevents information loss at boundaries"],
+        "relevant_chunks": [
+            "Overlap between chunks prevents information loss at boundaries"
+        ],
         "expected_answer": "Overlap between chunks prevents information loss at boundaries during retrieval, ensuring that sentences split across chunk boundaries are still fully represented in at least one chunk.",
         "difficulty": "medium",
     },
     {
         "query": "How does the Horizontal Pod Autoscaler decide when to scale?",
         "expected_doc_ids": ["doc_001"],
-        "relevant_chunks": ["observed CPU utilization or custom metrics", "checks metrics every 15 seconds"],
+        "relevant_chunks": [
+            "observed CPU utilization or custom metrics",
+            "checks metrics every 15 seconds",
+        ],
         "expected_answer": "The HPA automatically scales pods based on observed CPU utilization or custom metrics, checking every 15 seconds using a ratio-based algorithm.",
         "difficulty": "medium",
     },
     {
         "query": "How does PagedAttention improve LLM serving efficiency?",
         "expected_doc_ids": ["doc_005"],
-        "relevant_chunks": ["allocates KV cache in non-contiguous pages", "reducing memory waste by 60-80%"],
+        "relevant_chunks": [
+            "allocates KV cache in non-contiguous pages",
+            "reducing memory waste by 60-80%",
+        ],
         "expected_answer": "PagedAttention manages GPU memory by allocating the KV cache in non-contiguous pages, reducing memory waste by 60-80% and enabling higher batch sizes.",
         "difficulty": "medium",
     },
@@ -148,7 +164,9 @@ SYNTHETIC_QUERIES = [
     {
         "query": "What are the drawbacks of using Pinecone compared to self-hosted solutions?",
         "expected_doc_ids": ["doc_002"],
-        "relevant_chunks": ["vendor lock-in and network latency due to its cloud-only architecture"],
+        "relevant_chunks": [
+            "vendor lock-in and network latency due to its cloud-only architecture"
+        ],
         "expected_answer": "Pinecone introduces vendor lock-in and network latency due to its cloud-only architecture, unlike self-hosted options like FAISS or Qdrant.",
         "difficulty": "hard",
     },

@@ -32,6 +32,7 @@ from typing import Sequence
 #  Retrieval metrics
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def hit_rate_at_k(
     retrieved_ids: Sequence[str],
     relevant_ids: Sequence[str],
@@ -138,6 +139,7 @@ def recall_at_k(
 #  Generation / answer-quality metrics
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _tokenize(text: str) -> list[str]:
     """Lowercase whitespace tokenizer with punctuation stripping."""
     return re.findall(r"\b\w+\b", text.lower())
@@ -179,6 +181,7 @@ def rouge_l(prediction: str, reference: str) -> dict[str, float]:
     """
     try:
         from rouge_score import rouge_scorer
+
         scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
         scores = scorer.score(reference, prediction)
         rl = scores["rougeL"]
@@ -269,6 +272,7 @@ Respond with ONLY a JSON object: {{"score": <int 1-5>, "reasoning": "<brief expl
             temperature=0.0,
         )
         import json
+
         text = response.choices[0].message.content or ""
         # Strip markdown code fences if present
         text = re.sub(r"```json\s*|\s*```", "", text).strip()
@@ -296,9 +300,11 @@ Respond with ONLY a JSON object: {{"score": <int 1-5>, "reasoning": "<brief expl
 #  Latency statistics helper
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def latency_stats(latencies_ms: Sequence[float]) -> dict[str, float]:
     """Compute p50/p95/p99/mean/min/max from a list of latencies."""
     import numpy as np
+
     arr = np.array(latencies_ms, dtype=np.float64)
     if len(arr) == 0:
         return {k: 0.0 for k in ["min", "max", "mean", "p50", "p95", "p99", "std"]}

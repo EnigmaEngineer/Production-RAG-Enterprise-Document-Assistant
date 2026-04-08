@@ -45,6 +45,7 @@ class CrossEncoderReranker(BaseReranker):
             return self._model
         try:
             from sentence_transformers import CrossEncoder
+
             self._model = CrossEncoder(self._model_name, device=self._device)
             log.info("reranker.loaded", model=self._model_name, device=self._device)
         except Exception as exc:
@@ -74,7 +75,9 @@ class CrossEncoderReranker(BaseReranker):
             for i in range(0, len(pairs), self._batch_size):
                 batch = pairs[i : i + self._batch_size]
                 scores = model.predict(batch, show_progress_bar=False)
-                all_scores.extend(scores.tolist() if hasattr(scores, 'tolist') else list(scores))
+                all_scores.extend(
+                    scores.tolist() if hasattr(scores, "tolist") else list(scores)
+                )
 
             # Attach scores and sort
             for chunk, score in zip(chunks, all_scores):

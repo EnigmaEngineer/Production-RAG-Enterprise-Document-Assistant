@@ -23,8 +23,10 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.config import settings
 from src.models.schemas import (
-    IngestRequest, IngestResponse,
-    QueryRequest, QueryResponse,
+    IngestRequest,
+    IngestResponse,
+    QueryRequest,
+    QueryResponse,
     HealthCheck,
 )
 from src.api.pipeline import pipeline
@@ -35,6 +37,7 @@ security = HTTPBearer(auto_error=False)
 
 
 # ── Lifespan ────────────────────────────────────────────────────────────────
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,6 +78,7 @@ Instrumentator(
 
 # ── Auth dependency ─────────────────────────────────────────────────────────
 
+
 async def verify_api_key(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
 ) -> str:
@@ -88,11 +92,13 @@ async def verify_api_key(
 
 # ── Middleware ──────────────────────────────────────────────────────────────
 
+
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     """Inject X-Request-ID for correlation."""
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     import structlog
+
     structlog.contextvars.bind_contextvars(request_id=request_id)
 
     t0 = time.perf_counter()
@@ -114,6 +120,7 @@ async def add_request_id(request: Request, call_next):
 
 
 # ── Health routes ───────────────────────────────────────────────────────────
+
 
 @app.get("/healthz/live", response_model=HealthCheck, tags=["health"])
 async def liveness():
@@ -138,6 +145,7 @@ async def readiness():
 
 
 # ── Business routes ────────────────────────────────────────────────────────
+
 
 @app.post("/v1/ingest", response_model=IngestResponse, tags=["documents"])
 async def ingest_document(
