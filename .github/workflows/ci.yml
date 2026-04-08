@@ -1,0 +1,216 @@
+# .github/workflows/ci.yml
+# Runs on every push and PR to main.
+# Steps: lint → unit tests → integration tests → backtest with metrics table.
+
+name: CI — Lint, Test & Evaluate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  RAG_USE_DUMMY_LLM: "true"
+  RAG_RERANKER_ENABLED: "false"
+  RAG_LOG_LEVEL: "error"
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install ruff autoflake
+
+      - name: Check unused imports (autoflake)
+        run: |
+          autoflake --check --remove-all-unused-imports --remove-unused-variables \
+            --ignore-init-module-imports -r src/ evaluation/ tests/
+
+      - name: Lint (ruff)
+        run: ruff check src/ evaluation/ tests/
+
+      - name: Format check (ruff)
+        run: ruff format --check src/ evaluation/ tests/
+
+  # ────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests/test_pipeline.py -v --tb=short
+
+  # ────────────────────────────────────────────────────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-base-en-v1.5
+          restore-keys: hf-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run integration tests (ingest + query pipeline)
+        run: python -m pytest tests/test_integration.py::TestIngestAndQuery -v --tb=short
+
+  # ────────────────────────────────────────────────────────────────
+  backtest:
+    name: Backtest — Retrieval & Generation Metrics
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-base-en-v1.5
+          restore-keys: hf-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backtest
+        run: |
+          python evaluation/backtest.py \
+            --config config.yaml \
+            --generate-synthetic \
+            --single-config recursive_512_no_rerank \
+            --output evaluation/results.json
+
+      - name: Print metrics summary
+        if: always()
+        run: |
+          python -c "
+          import json
+          with open('evaluation/results.json') as f:
+              data = json.load(f)
+          m = data['configs'][0]['metrics']
+          print()
+          print('┌──────────────────────────────────────────┐')
+          print('│       BACKTEST RESULTS SUMMARY           │')
+          print('├────────────────────┬─────────────────────┤')
+          print(f'│ Hit Rate @ 5       │ {m.get(\"hit_rate_at_5\", 0):>19.3f} │')
+          print(f'│ MRR                │ {m.get(\"mrr\", 0):>19.3f} │')
+          print(f'│ NDCG @ 5           │ {m.get(\"ndcg_at_5\", 0):>19.3f} │')
+          print(f'│ Token F1           │ {m.get(\"token_f1\", 0):>19.3f} │')
+          print(f'│ ROUGE-L F1         │ {m.get(\"rouge_l_f1\", 0):>19.3f} │')
+          print(f'│ Latency p50 (ms)   │ {m.get(\"latency_p50_ms\", 0):>19.1f} │')
+          print(f'│ Latency p95 (ms)   │ {m.get(\"latency_p95_ms\", 0):>19.1f} │')
+          print(f'│ Throughput (QPS)   │ {m.get(\"throughput_qps\", 0):>19.1f} │')
+          print('├────────────────────┼─────────────────────┤')
+          passed = data['metadata'].get('gates_passed', False)
+          status = 'PASSED' if passed else 'FAILED'
+          print(f'│ Gates              │ {status:>19} │')
+          print('└────────────────────┴─────────────────────┘')
+          "
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results
+          path: evaluation/results.json
+          retention-days: 30
+
+  # ────────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Smoke Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t rag-enterprise/api:ci .
+
+      - name: Verify image starts
+        run: |
+          docker run -d --name rag-test \
+            -e RAG_USE_DUMMY_LLM=true \
+            -e RAG_RERANKER_ENABLED=false \
+            -e RAG_LOG_LEVEL=warning \
+            -p 8000:8000 \
+            rag-enterprise/api:ci
+
+          # Wait for the container to start (up to 90s)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/healthz/live > /dev/null 2>&1; then
+              echo "Container is live after ${i}x3s"
+              break
+            fi
+            sleep 3
+          done
+
+          # Verify liveness
+          curl -sf http://localhost:8000/healthz/live | python -m json.tool
+
+          # Cleanup
+          docker stop rag-test
+          docker rm rag-test
