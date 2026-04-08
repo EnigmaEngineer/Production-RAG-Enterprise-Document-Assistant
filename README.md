@@ -1,3 +1,4 @@
+![CI](https://github.com/EnigmaEngineer/Production-RAG-Enterprise-Document-Assistant/actions/workflows/ci.yml/badge.svg)
 # RAG Enterprise Document Assistant
 
 Production-grade Retrieval-Augmented Generation system with hybrid retrieval,
