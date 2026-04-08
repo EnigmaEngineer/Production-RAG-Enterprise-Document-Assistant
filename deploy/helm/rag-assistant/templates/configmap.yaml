@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rag.fullname" . }}-config
+  labels:
+    {{- include "rag.labels" . | nindent 4 }}
+data:
+  RAG_CHUNK_STRATEGY: {{ .Values.config.chunkStrategy | quote }}
+  RAG_CHUNK_SIZE: {{ .Values.config.chunkSize | quote }}
+  RAG_CHUNK_OVERLAP: {{ .Values.config.chunkOverlap | quote }}
+  RAG_EMBEDDING_MODEL: {{ .Values.config.embeddingModel | quote }}
+  RAG_EMBEDDING_DIM: {{ .Values.config.embeddingDim | quote }}
+  RAG_VECTOR_BACKEND: {{ .Values.config.vectorBackend | quote }}
+  RAG_VECTOR_TOP_K: {{ .Values.config.vectorTopK | quote }}
+  RAG_BM25_TOP_K: {{ .Values.config.bm25TopK | quote }}
+  RAG_HYBRID_ALPHA: {{ .Values.config.hybridAlpha | quote }}
+  RAG_RERANK_TOP_K: {{ .Values.config.rerankTopK | quote }}
+  RAG_RERANKER_ENABLED: {{ .Values.config.rerankerEnabled | quote }}
+  RAG_RERANKER_MODEL: {{ .Values.config.rerankerModel | quote }}
+  RAG_LLM_BASE_URL: "http://{{ include "rag.fullname" . }}-vllm:{{ .Values.vllm.service.port }}/v1"
+  RAG_LLM_MODEL: {{ .Values.vllm.model | quote }}
+  RAG_LLM_MAX_TOKENS: {{ .Values.config.llmMaxTokens | quote }}
+  RAG_LLM_TEMPERATURE: {{ .Values.config.llmTemperature | quote }}
+  RAG_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  RAG_RATE_LIMIT_RPM: {{ .Values.config.rateLimitRPM | quote }}
+  {{- if .Values.qdrant.enabled }}
+  RAG_QDRANT_URL: "http://{{ include "rag.fullname" . }}-qdrant:{{ .Values.qdrant.service.port }}"
+  {{- end }}

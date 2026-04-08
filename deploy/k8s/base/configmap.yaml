@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-config
+  namespace: rag-system
+  labels:
+    app.kubernetes.io/name: rag-api
+    app.kubernetes.io/part-of: rag-enterprise
+data:
+  # Chunking
+  RAG_CHUNK_STRATEGY: "recursive"
+  RAG_CHUNK_SIZE: "512"
+  RAG_CHUNK_OVERLAP: "128"
+
+  # Embedding
+  RAG_EMBEDDING_MODEL: "BAAI/bge-base-en-v1.5"
+  RAG_EMBEDDING_DIM: "768"
+
+  # Retrieval
+  RAG_VECTOR_BACKEND: "faiss"
+  RAG_VECTOR_TOP_K: "100"
+  RAG_BM25_TOP_K: "100"
+  RAG_HYBRID_ALPHA: "0.5"
+  RAG_RERANK_TOP_K: "10"
+
+  # Reranker
+  RAG_RERANKER_ENABLED: "true"
+  RAG_RERANKER_MODEL: "BAAI/bge-reranker-v2-m3"
+  RAG_RERANKER_BATCH_SIZE: "25"
+  RAG_RERANKER_TIMEOUT_S: "2.0"
+
+  # LLM
+  RAG_LLM_BASE_URL: "http://vllm-service:8000/v1"
+  RAG_LLM_MODEL: "meta-llama/Llama-3.1-8B-Instruct"
+  RAG_LLM_MAX_TOKENS: "1024"
+  RAG_LLM_TEMPERATURE: "0.1"
+  RAG_LLM_TIMEOUT_S: "20.0"
+
+  # Observability
+  RAG_LOG_LEVEL: "info"
+
+  # Resilience
+  RAG_CB_FAIL_MAX: "5"
+  RAG_CB_RESET_TIMEOUT_S: "30"
+  RAG_RATE_LIMIT_RPM: "60"
+  RAG_REQUEST_TIMEOUT_S: "30.0"

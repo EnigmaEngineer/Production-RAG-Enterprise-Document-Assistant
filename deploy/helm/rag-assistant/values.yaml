@@ -1,0 +1,112 @@
+# ==========================================================================
+# RAG Assistant — Helm values
+# Override any value with --set or a custom values-prod.yaml
+# ==========================================================================
+
+# ── API Server ───────────────────────────────────────────────────────────
+api:
+  replicaCount: 2
+  image:
+    repository: rag-enterprise/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+  resources:
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+# ── vLLM ─────────────────────────────────────────────────────────────────
+vllm:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: vllm/vllm-openai
+    tag: latest
+  model: "meta-llama/Llama-3.1-8B-Instruct"
+  maxModelLen: 8192
+  gpuMemoryUtilization: "0.85"
+  service:
+    port: 8000
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+      nvidia.com/gpu: "1"
+    limits:
+      cpu: "4"
+      memory: "16Gi"
+      nvidia.com/gpu: "1"
+  nodeSelector:
+    accelerator: nvidia-gpu
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+# ── Qdrant (optional) ───────────────────────────────────────────────────
+qdrant:
+  enabled: false
+  image:
+    repository: qdrant/qdrant
+    tag: latest
+  service:
+    port: 6333
+  storage:
+    size: 20Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+
+# ── Application config ──────────────────────────────────────────────────
+config:
+  chunkStrategy: recursive
+  chunkSize: 512
+  chunkOverlap: 128
+  embeddingModel: "BAAI/bge-base-en-v1.5"
+  embeddingDim: 768
+  vectorBackend: faiss
+  vectorTopK: 100
+  bm25TopK: 100
+  hybridAlpha: "0.5"
+  rerankTopK: 10
+  rerankerEnabled: true
+  rerankerModel: "BAAI/bge-reranker-v2-m3"
+  llmMaxTokens: 1024
+  llmTemperature: "0.1"
+  logLevel: info
+  rateLimitRPM: 60
+
+# ── Secrets ──────────────────────────────────────────────────────────────
+secrets:
+  apiKey: "change-me-in-production"
+  hfToken: ""
+
+# ── Ingress ──────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: rag-api.example.com
+  tls:
+    enabled: false
+    secretName: rag-api-tls
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"

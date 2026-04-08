@@ -1,0 +1,14 @@
+apiVersion: v2
+name: rag-assistant
+description: Production RAG Enterprise Document Assistant
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - rag
+  - llm
+  - retrieval
+  - enterprise
+maintainers:
+  - name: Engineering Team
+    email: eng@company.com

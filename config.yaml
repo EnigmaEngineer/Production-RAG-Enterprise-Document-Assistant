@@ -1,0 +1,68 @@
+# config.yaml — Default configuration for the RAG pipeline.
+#
+# Every value here can also be set via environment variable with the RAG_ prefix.
+# Example: RAG_CHUNK_SIZE=256 overrides chunk_size below.
+#
+# Usage:
+#   python evaluation/backtest.py --config config.yaml --test-file data.jsonl
+
+# ── Chunking ────────────────────────────────────────────────────────────
+chunk_strategy: recursive        # recursive | semantic | fixed_overlap
+chunk_size: 512                  # tokens per chunk
+chunk_overlap: 128               # overlap tokens between consecutive chunks
+semantic_threshold: 0.75         # cosine sim threshold for semantic chunking
+
+# ── Embedding ───────────────────────────────────────────────────────────
+embedding_model: BAAI/bge-base-en-v1.5
+embedding_dim: 768
+embedding_batch_size: 64
+
+# ── Vector Store ────────────────────────────────────────────────────────
+vector_backend: faiss             # faiss | qdrant
+faiss_index_path: /data/faiss_index
+qdrant_url: http://qdrant:6333
+qdrant_collection: documents
+
+# ── BM25 ────────────────────────────────────────────────────────────────
+bm25_k1: 1.5
+bm25_b: 0.75
+bm25_top_k: 100
+
+# ── Retrieval ───────────────────────────────────────────────────────────
+vector_top_k: 100
+rerank_top_k: 10
+hybrid_alpha: 0.5                # 1.0 = vector only, 0.0 = BM25 only
+
+# ── Reranker ────────────────────────────────────────────────────────────
+reranker_model: BAAI/bge-reranker-v2-m3
+reranker_batch_size: 25
+reranker_timeout_s: 2.0
+reranker_enabled: false          # set true when cross-encoder model is available
+
+# ── LLM ─────────────────────────────────────────────────────────────────
+llm_base_url: http://vllm:8000/v1
+llm_model: meta-llama/Llama-3.1-8B-Instruct
+llm_max_tokens: 1024
+llm_temperature: 0.1
+llm_timeout_s: 20.0
+
+# ── API ─────────────────────────────────────────────────────────────────
+host: 0.0.0.0
+port: 8000
+log_level: info
+api_key: dev-key-change-me
+request_timeout_s: 30.0
+
+# ── Resilience ──────────────────────────────────────────────────────────
+cb_fail_max: 5                   # circuit breaker: failures before open
+cb_reset_timeout_s: 30           # seconds before half-open probe
+rate_limit_rpm: 60               # requests per minute per API key
+
+# ── Evaluation gates ────────────────────────────────────────────────────
+# These are used by backtest.py --config to set pass/fail thresholds.
+gates:
+  hit_rate_at_5: 0.75
+  mrr: 0.65
+  ndcg_at_5: 0.60
+  latency_p95_ms: 2000
+  error_rate: 0.05

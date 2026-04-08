@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+*.log
+evaluation/results.json
+evaluation/test_data.jsonl
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.faiss
+*.npy
