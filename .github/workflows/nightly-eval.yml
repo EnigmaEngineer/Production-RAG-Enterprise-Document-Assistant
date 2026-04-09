@@ -48,6 +48,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run full evaluation matrix
+        env:
+          # Reranker runs on CPU in CI — allow higher latency threshold
+          GATE_P95_MS: "15000"
         run: |
           python evaluation/backtest.py \
             --config config.yaml \
