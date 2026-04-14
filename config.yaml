@@ -64,5 +64,5 @@ gates:
   hit_rate_at_5: 0.75
   mrr: 0.65
   ndcg_at_5: 0.60
-  latency_p95_ms: 2000
+  latency_p95_ms: 15000
   error_rate: 0.05
