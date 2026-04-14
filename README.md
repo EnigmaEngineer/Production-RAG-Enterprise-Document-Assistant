@@ -1,7 +1,7 @@
 # RAG Enterprise Document Assistant
 
-Production-grade Retrieval-Augmented Generation system with hybrid retrieval,
-cross-encoder reranking, citation support, and Kubernetes deployment.
+Production grade Retrieval Augmented Generation system with hybrid retrieval,
+cross encoder reranking, citation support and Kubernetes deployment.
 
 ## Architecture
 
