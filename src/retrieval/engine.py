@@ -24,22 +24,45 @@ log = get_logger(__name__)
 
 
 class VectorStore(ABC):
+    """Base class for vector storage backends.
+
+    FAISS and Qdrant both implement this. The retriever doesn't care
+    which one is behind it.
+    """
+
     @abstractmethod
-    def add(self, chunks: list[Chunk]) -> None: ...
+    def add(self, chunks: list[Chunk]) -> None:
+        """Store chunks with their embeddings. Will raise if embeddings are null."""
+        ...
+
     @abstractmethod
     def search(
         self, query_embedding: np.ndarray, top_k: int
-    ) -> list[tuple[str, float]]: ...
+    ) -> list[tuple[str, float]]:
+        """Return (chunk_id, score) pairs sorted by descending similarity."""
+        ...
+
     @abstractmethod
-    def count(self) -> int: ...
+    def count(self) -> int:
+        """How many vectors are in the index."""
+        ...
+
     @abstractmethod
-    def delete_by_doc_id(self, doc_id: str) -> int: ...
+    def delete_by_doc_id(self, doc_id: str) -> int:
+        """Remove all chunks for a given doc. Returns count of removed chunks."""
+        ...
 
 
 class FAISSStore(VectorStore):
     """In-process FAISS vector store with optional persistence."""
 
     def __init__(self, dim: int = 768, index_path: str | None = None):
+        """Set up a FAISS IndexFlatIP store.
+
+        Uses inner product on L2-normalized vectors which gives you cosine
+        similarity. Everything lives in memory. No built-in persistence so
+        if the process dies the index is gone.
+        """
         import faiss
 
         self._dim = dim
@@ -53,6 +76,8 @@ class FAISSStore(VectorStore):
         log.info("faiss_store.init", dim=dim)
 
     def add(self, chunks: list[Chunk]) -> None:
+        """Add chunks to the index. Normalizes embeddings to unit vectors first
+        so inner product gives cosine similarity."""
         if not chunks:
             return
         embeddings = []
@@ -77,6 +102,8 @@ class FAISSStore(VectorStore):
     def search(
         self, query_embedding: np.ndarray, top_k: int = 100
     ) -> list[tuple[str, float]]:
+        """Find the closest vectors. Query gets normalized to match the index.
+        Returns empty list if nothing is indexed yet."""
         if self._index.ntotal == 0:
             return []
         qvec = query_embedding.reshape(1, -1).astype(np.float32)
@@ -96,6 +123,7 @@ class FAISSStore(VectorStore):
         return results
 
     def count(self) -> int:
+        """Number of vectors in the index."""
         return self._index.ntotal
 
     def delete_by_doc_id(self, doc_id: str) -> int:
@@ -139,9 +167,11 @@ class FAISSStore(VectorStore):
         return removed
 
     def get_chunk(self, chunk_id: str) -> Chunk | None:
+        """Grab a chunk by ID. None if it doesn't exist."""
         return self._chunk_map.get(chunk_id)
 
     def get_all_chunks(self) -> list[Chunk]:
+        """Dump every chunk in the store. Mainly useful for rebuilds."""
         return list(self._chunk_map.values())
 
 
@@ -154,6 +184,16 @@ class BM25Index:
     """Wraps rank_bm25 with chunk ID tracking and live rebuild."""
 
     def __init__(self, k1: float = 1.5, b: float = 0.75):
+        """Set up a BM25 keyword index.
+
+        Wraps rank_bm25.BM25Okapi. Rebuilds the whole index on every add
+        or delete because BM25Okapi doesn't support incremental updates.
+        Tokenization is just lowercased whitespace splitting.
+
+        Heads up: IDF produces zeros for terms in 50%+ of documents. With
+        only 2 docs almost everything gets zero. Need at least 4 docs for
+        BM25 to be useful. Not a bug, just how Okapi BM25 math works.
+        """
         self._k1 = k1
         self._b = b
         self._bm25: BM25Okapi | None = None
@@ -162,6 +202,7 @@ class BM25Index:
         self._lock = threading.Lock()
 
     def add(self, chunks: list[Chunk]) -> None:
+        """Add chunks and rebuild. Not incremental, rebuilds the whole thing."""
         with self._lock:
             for c in chunks:
                 tokens = c.text.lower().split()
@@ -171,6 +212,8 @@ class BM25Index:
         log.info("bm25_index.added", count=len(chunks), total=len(self._chunk_ids))
 
     def search(self, query: str, top_k: int = 100) -> list[tuple[str, float]]:
+        """Run a BM25 keyword search. Only returns chunks with positive scores
+        so you might get fewer than top_k results on small corpora."""
         if self._bm25 is None or not self._chunk_ids:
             return []
         tokens = query.lower().split()
@@ -185,6 +228,8 @@ class BM25Index:
         return results
 
     def delete_by_doc_id(self, doc_id: str, chunk_map: dict[str, Chunk]) -> int:
+        """Remove chunks for a doc and rebuild. Needs the chunk_map because
+        BM25Index only tracks chunk IDs, not which doc they belong to."""
         with self._lock:
             new_tokens = []
             new_ids = []
@@ -208,6 +253,7 @@ class BM25Index:
             self._bm25 = None
 
     def count(self) -> int:
+        """How many chunks are indexed."""
         return len(self._chunk_ids)
 
 
@@ -234,6 +280,11 @@ class HybridRetriever:
         embed_fn,  # callable: str -> np.ndarray
         alpha: float = 0.5,
     ):
+        """Wire up the hybrid retriever.
+
+        alpha controls the balance. 1.0 = vector only, 0.0 = BM25 only.
+        0.5 gives equal weight to both which works well in practice.
+        """
         self.vector_store = vector_store
         self.bm25_index = bm25_index
         self.embed_fn = embed_fn
@@ -245,8 +296,11 @@ class HybridRetriever:
         vector_top_k: int = 100,
         bm25_top_k: int = 100,
     ) -> list[Chunk]:
-        """
-        Run hybrid search and return chunks sorted by RRF score.
+        """Run both vector and BM25 search, merge with RRF.
+
+        Each result gets vector_score, bm25_score and rrf_score attached
+        so the reranker and citation formatter can use them downstream.
+        RRF constant is 60 which is the standard value from the paper.
         """
         t0 = time.perf_counter()
 
